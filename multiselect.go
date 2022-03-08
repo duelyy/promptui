@@ -8,9 +8,9 @@ import (
 	"text/template"
 
 	"github.com/chzyer/readline"
-	"github.com/juju/ansiterm"
 	"github.com/spaceweasel/promptui/list"
 	"github.com/spaceweasel/promptui/screenbuf"
+	"github.com/juju/ansiterm"
 )
 
 // MultiSelect represents a list of checkable items used to enable selections, they can be used as a
@@ -101,6 +101,9 @@ type MultiSelectKeys struct {
 
 	// Toggle is the key used to toggle the item selection. Defaults to the space key.
 	Toggle Key
+
+	// Esc is the key used to unselect all the item selection. Defaults to the esc key.
+	Esc Key
 }
 
 // MultiSelectTemplates allow a select list to be customized following stdlib
@@ -268,7 +271,10 @@ func (s *MultiSelect) innerRun(cursorPos, scroll int, top rune) ([]int, error) {
 			} else {
 				s.selected[idx] = true
 			}
-
+		case key == s.Keys.Esc.Code && !searchMode:
+			for i := range s.selected {
+				delete(s.selected, i)
+			}
 		case key == s.Keys.Search.Code:
 			if !canSearch {
 				break
@@ -500,7 +506,8 @@ func (s *MultiSelect) prepareTemplates() error {
 	if tpls.Help == "" {
 		tpls.Help = fmt.Sprintf(`{{ "Navigate with arrow keys:" | faint }} {{ .NextKey | faint }} ` +
 			`{{ .PrevKey | faint }} {{ .PageDownKey | faint }} {{ .PageUpKey | faint }}` +
-			`{{ " (" | faint }}{{ .ToggleKey | faint }} {{ "to select)" | faint }}`)
+			`{{ " (" | faint }}{{ .ToggleKey | faint }} {{ "to select)" | faint }}` +
+			`{{ " (" | faint }}{{ .EscKey | faint }} {{ "to unselect all items)" | faint }}`)
 	}
 
 	tpl, err = template.New("").Funcs(tpls.FuncMap).Parse(tpls.Help)
@@ -526,6 +533,7 @@ func (s *MultiSelect) setKeys() {
 		PageDown: Key{Code: KeyForward, Display: KeyForwardDisplay},
 		Toggle:   Key{Code: ' ', Display: "SPACE"},
 		Search:   Key{Code: '/', Display: "/"},
+		Esc:      Key{Code: 'q', Display: "q"},
 	}
 }
 
@@ -555,6 +563,7 @@ func (s *MultiSelect) renderHelp(b bool) []byte {
 		PrevKey     string
 		PageDownKey string
 		PageUpKey   string
+		EscKey      string
 		ToggleKey   string
 		Search      bool
 		SearchKey   string
@@ -563,6 +572,7 @@ func (s *MultiSelect) renderHelp(b bool) []byte {
 		PrevKey:     s.Keys.Prev.Display,
 		PageDownKey: s.Keys.PageDown.Display,
 		PageUpKey:   s.Keys.PageUp.Display,
+		EscKey:      s.Keys.Esc.Display,
 		ToggleKey:   s.Keys.Toggle.Display,
 		SearchKey:   s.Keys.Search.Display,
 		Search:      b,
